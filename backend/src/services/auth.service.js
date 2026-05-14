@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { prisma, redis } = require('../config/db');
+const { prisma } = require('../config/db');
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -32,7 +32,7 @@ class AuthService {
 
     const accessToken = generateAccessToken(user.id);
     const { token: refreshToken, tokenId } = generateRefreshToken(user.id);
-    await storeRefreshToken(redis, user.id, tokenId, refreshToken);
+    await storeRefreshToken(prisma, user.id, tokenId, refreshToken);
 
     const { passwordHash: _, ...userProfile } = user;
     return { user: userProfile, accessToken, refreshToken };
@@ -47,14 +47,14 @@ class AuthService {
 
     const accessToken = generateAccessToken(user.id);
     const { token: refreshToken, tokenId } = generateRefreshToken(user.id);
-    await storeRefreshToken(redis, user.id, tokenId, refreshToken);
+    await storeRefreshToken(prisma, user.id, tokenId, refreshToken);
 
     const { passwordHash: _, ...userProfile } = user;
     return { user: userProfile, accessToken, refreshToken };
   }
 
   async refresh(token) {
-    const payload = await verifyRefreshToken(redis, token);
+    const payload = await verifyRefreshToken(prisma, token);
     if (!payload) throw new Error('Invalid or expired refresh token');
 
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
@@ -65,9 +65,9 @@ class AuthService {
   }
 
   async logout(token) {
-    const payload = await verifyRefreshToken(redis, token);
+    const payload = await verifyRefreshToken(prisma, token);
     if (payload) {
-      await revokeRefreshToken(redis, payload.sub, payload.jti);
+      await revokeRefreshToken(prisma, payload.jti);
     }
   }
 

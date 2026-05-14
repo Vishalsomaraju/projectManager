@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const { Server } = require('socket.io');
-const { prisma, redis } = require('./config/db');
+const { prisma } = require('./config/db');
 
 const { initSocket } = require('./socket/index');
 
@@ -50,21 +50,16 @@ app.use('/api/tasks/:taskId/comments', commentsRoutes);
 app.get('/api/projects/:projectId/members/search', commentsController.searchMembers);
 
 // Health check
-app.get('/api/health', async (req, res) => {
+app.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    const redisStatus = await redis.ping();
     res.json({
       status: 'ok',
-      database: 'connected',
-      redis: redisStatus === 'PONG' ? 'connected' : 'disconnected',
-      timestamp: new Date().toISOString(),
+      db: 'connected',
+      timestamp: new Date(),
     });
   } catch (error) {
-    res.status(500).json({
-      status: 'error',
-      message: error.message,
-    });
+    res.status(500).json({ status: 'error', message: error.message });
   }
 });
 
@@ -75,4 +70,4 @@ server.listen(PORT, () => {
 });
 
 // Export for use in other modules
-module.exports = { app, io, prisma, redis };
+module.exports = { app, io, prisma };

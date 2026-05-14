@@ -1,6 +1,5 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
-const { redis } = require('../config/db');
 const { registerHandlers } = require('./handlers');
 const { getProjectRoom, getTaskRoom, getUserRoom } = require('./rooms');
 

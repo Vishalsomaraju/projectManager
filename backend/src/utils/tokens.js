@@ -18,25 +18,35 @@ const generateRefreshToken = (userId) => {
   return { token, tokenId };
 };
 
-const storeRefreshToken = async (redis, userId, tokenId, token) => {
-  const key = `refresh:${userId}:${tokenId}`;
-  await redis.set(key, token, 'EX', 7 * 24 * 60 * 60); // 7 days
+const storeRefreshToken = async (prisma, userId, tokenId, token) => {
+  await prisma.refreshToken.create({
+    data: {
+      id: tokenId,
+      token,
+      userId,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    },
+  });
 };
 
-const revokeRefreshToken = async (redis, userId, tokenId) => {
-  const key = `refresh:${userId}:${tokenId}`;
-  await redis.del(key);
+const revokeRefreshToken = async (prisma, tokenId) => {
+  await prisma.refreshToken.deleteMany({
+    where: { id: tokenId },
+  });
 };
 
-const verifyRefreshToken = async (redis, token) => {
+const verifyRefreshToken = async (prisma, token) => {
   try {
     const payload = jwt.verify(token, REFRESH_TOKEN_SECRET);
     if (payload.type !== 'refresh') return null;
 
-    const key = `refresh:${payload.sub}:${payload.jti}`;
-    const storedToken = await redis.get(key);
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: { id: payload.jti },
+    });
     
-    if (!storedToken || storedToken !== token) return null;
+    if (!storedToken || storedToken.token !== token || storedToken.expiresAt < new Date()) {
+      return null;
+    }
     
     return payload;
   } catch (error) {
